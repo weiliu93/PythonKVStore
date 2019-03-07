@@ -1,0 +1,6 @@
+.idea/
+.venv/
+.pytest_cache/
+__pycache__/
+pool_folder/
+block_file
