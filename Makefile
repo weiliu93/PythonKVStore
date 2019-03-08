@@ -1,5 +1,5 @@
 black-style:
-	black ./interpreter ./test
+	black ./kvdb ./test
 
 unit_test:
 	pytest -v test/unit

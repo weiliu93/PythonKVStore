@@ -10,5 +10,6 @@ class MemorySegment(object):
         self.length = length
 
     def __str__(self):
-        return 'Pool: {}, pool start offset: {}, pool end offset: {}, segment length: {}' \
-            .format(self.pool, self.start_offset, self.end_offset, self.length)
+        return "Pool: {}, pool start offset: {}, pool end offset: {}, segment length: {}".format(
+            self.pool, self.start_offset, self.end_offset, self.length
+        )
