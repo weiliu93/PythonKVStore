@@ -51,6 +51,13 @@ class MemoryBlock(object):
     def block_size(self):
         return self.__block_size
 
+    @property
+    def current_offset(self):
+        ans = self.__segment_length_prefix_sum[
+            self.__current_segment_index - 1] if self.__current_segment_index > 0 else 0
+        ans += (self.__current_segment_offset - self.__memory_segments[self.__current_segment_index].start_offset)
+        return ans
+
     def write(self, byte_data):
         """
         Since block's write is append-only, so we don't need some argument like offset,

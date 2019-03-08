@@ -383,3 +383,38 @@ def test_block_allocate_corner_case():
         shutil.rmtree(pool_folder)
     if os.path.exists(block_file):
         os.remove(block_file)
+
+
+def test_block_current_offset():
+    test_case_package_path = os.path.abspath(
+        os.path.join(package_root_path, "storage", "test_block_allocate_corner_case")
+    )
+
+    pool_folder = os.path.join(test_case_package_path, "pools")
+    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
+    block_file = os.path.join(test_case_package_path, "block_file")
+
+    if os.path.exists(pool_folder):
+        shutil.rmtree(pool_folder)
+    if os.path.exists(block_file):
+        os.remove(block_file)
+
+    manager = MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file)
+    block = manager.allocate_block(10)
+
+    block.write('hello')
+    assert block.current_offset == 5
+
+    block.write('hey')
+    assert block.current_offset == 8
+
+    block.write('a')
+    assert block.current_offset == 9
+
+    block.rewind(7)
+    assert block.current_offset == 7
+
+    if os.path.exists(pool_folder):
+        shutil.rmtree(pool_folder)
+    if os.path.exists(block_file):
+        os.remove(block_file)
