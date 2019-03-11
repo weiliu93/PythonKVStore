@@ -53,9 +53,15 @@ class MemoryBlock(object):
 
     @property
     def current_offset(self):
-        ans = self.__segment_length_prefix_sum[
-            self.__current_segment_index - 1] if self.__current_segment_index > 0 else 0
-        ans += (self.__current_segment_offset - self.__memory_segments[self.__current_segment_index].start_offset)
+        ans = (
+            self.__segment_length_prefix_sum[self.__current_segment_index - 1]
+            if self.__current_segment_index > 0
+            else 0
+        )
+        ans += (
+            self.__current_segment_offset
+            - self.__memory_segments[self.__current_segment_index].start_offset
+        )
         return ans
 
     def write(self, byte_data):

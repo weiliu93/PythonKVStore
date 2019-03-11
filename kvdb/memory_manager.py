@@ -52,6 +52,10 @@ class MemoryManager(object):
     def block_dict(self):
         return self._block_dict
 
+    @property
+    def conf(self):
+        return self._conf
+
     def allocate_block(self, block_size):
         total_size = block_size
         memory_segments = []
@@ -73,7 +77,9 @@ class MemoryManager(object):
         block_f = open(self._block_file, "ab")
         block = MemoryBlock(self._next_block_id, block_size, memory_segments)
         self._block_list.append(block)
+        self._block_dict[block.block_id] = block
         self._next_block_id += 1
+
         string = pickle.dumps(block)
         # TODO without compression now
         output_bytearray = bytearray()
@@ -92,6 +98,7 @@ class MemoryManager(object):
         )
         pool = MemoryPool(pool_path, self._conf)
         self._pool_list.append(pool)
+        self._pool_dict[pool.pool_id] = pool
         self._next_pool_id += 1
         self._current_pool_index = len(self._pool_list) - 1
 

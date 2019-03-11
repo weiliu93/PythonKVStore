@@ -387,7 +387,7 @@ def test_block_allocate_corner_case():
 
 def test_block_current_offset():
     test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_block_allocate_corner_case")
+        os.path.join(package_root_path, "storage", "test_block_current_offset")
     )
 
     pool_folder = os.path.join(test_case_package_path, "pools")
@@ -399,20 +399,84 @@ def test_block_current_offset():
     if os.path.exists(block_file):
         os.remove(block_file)
 
-    manager = MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file)
+    manager = MemoryManager(
+        pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
+    )
     block = manager.allocate_block(10)
 
-    block.write('hello')
+    block.write("hello")
     assert block.current_offset == 5
 
-    block.write('hey')
+    block.write("hey")
     assert block.current_offset == 8
 
-    block.write('a')
+    block.write("a")
     assert block.current_offset == 9
 
     block.rewind(7)
     assert block.current_offset == 7
+
+    if os.path.exists(pool_folder):
+        shutil.rmtree(pool_folder)
+    if os.path.exists(block_file):
+        os.remove(block_file)
+
+
+def test_block_dict():
+    test_case_package_path = os.path.abspath(
+        os.path.join(package_root_path, "storage", "test_block_dict")
+    )
+
+    pool_folder = os.path.join(test_case_package_path, "pools")
+    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
+    block_file = os.path.join(test_case_package_path, "block_file")
+
+    if os.path.exists(pool_folder):
+        shutil.rmtree(pool_folder)
+    if os.path.exists(block_file):
+        os.remove(block_file)
+
+    manager = MemoryManager(
+        pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
+    )
+    for i in range(10):
+        manager.allocate_block(1)
+
+    manager = MemoryManager(
+        pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
+    )
+    assert len(manager.block_dict) == 10
+    for i in range(10):
+        assert i in manager.block_dict
+
+    if os.path.exists(pool_folder):
+        shutil.rmtree(pool_folder)
+    if os.path.exists(block_file):
+        os.remove(block_file)
+
+
+def test_pool_dict():
+    test_case_package_path = os.path.abspath(
+        os.path.join(package_root_path, "storage", "test_pool_dict")
+    )
+
+    pool_folder = os.path.join(test_case_package_path, "pools")
+    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
+    block_file = os.path.join(test_case_package_path, "block_file")
+
+    if os.path.exists(pool_folder):
+        shutil.rmtree(pool_folder)
+    if os.path.exists(block_file):
+        os.remove(block_file)
+
+    manager = MemoryManager(
+        pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
+    )
+    manager.allocate_block(100)
+
+    assert len(manager.pool_dict) == 20
+    for i in range(20):
+        assert i in manager.pool_dict
 
     if os.path.exists(pool_folder):
         shutil.rmtree(pool_folder)
