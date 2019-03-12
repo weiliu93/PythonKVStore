@@ -129,6 +129,9 @@ class MemoryBlock(object):
                 high = mid
         # delegate read operations to underlying pools
         offset -= self.__segment_length_prefix_sum[low - 1] if low - 1 >= 0 else 0
+        offset += self.__memory_segments[low].start_offset
+        # turn absolute offset into headless offset
+        offset -= self.__memory_segments[low].pool.pool_allocate_offset_header
         read_data = bytearray()
         while low < len(self.__memory_segments) and length > 0:
             data = self.__memory_segments[low].pool.read(offset, length)

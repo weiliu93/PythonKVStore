@@ -66,6 +66,10 @@ class MemoryPool(object):
     def pool_allocate_limit(self):
         return self.__pool_size - self.__pool_allocate_offset
 
+    @property
+    def pool_allocate_offset_header(self):
+        return self.__pool_allocate_offset_header
+
     def allocate(self, size):
         assert size > 0, "memory allocated should be greater than zero"
         assert self.__pool_allocate_offset + size <= self.__pool_size

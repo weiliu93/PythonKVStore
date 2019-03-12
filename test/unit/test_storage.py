@@ -1,5 +1,6 @@
 import sys
 import os
+import inspect
 import shutil
 
 sys.path.append(
@@ -14,27 +15,8 @@ package_root_path = os.path.abspath(
 
 
 def test_memory_manager_allocate_block():
-    pool_folder = os.path.abspath(
-        os.path.join(
-            package_root_path, "storage", "test_memory_manager_allocate_block", "pools"
-        )
-    )
-    conf_path = os.path.abspath(
-        os.path.join(
-            package_root_path,
-            "storage",
-            "test_memory_manager_allocate_block",
-            "storage_conf.ini",
-        )
-    )
-    block_file = os.path.abspath(
-        os.path.join(
-            package_root_path,
-            "storage",
-            "test_memory_manager_allocate_block",
-            "block_file",
-        )
-    )
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     if os.path.exists(pool_folder):
         shutil.rmtree(pool_folder)
@@ -80,27 +62,12 @@ def test_memory_manager_allocate_block():
     assert pools[1].pool_allocate_limit == 2
     assert pools[1].pool_allocate_offset == 8
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_memory_manager_allocate_multi_blocks():
-    test_case_package_path = os.path.abspath(
-        os.path.join(
-            package_root_path, "storage", "test_memory_manager_allocate_multi_blocks"
-        )
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     manager = MemoryManager(
         conf_path=conf_path, pool_folder=pool_folder, block_file=block_file
@@ -159,30 +126,17 @@ def test_memory_manager_allocate_multi_blocks():
         and block1.memory_segments[0].end_offset == 8
     )
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_write_data_to_block():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_write_data_to_block")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     def check_content(filepath, target_content_string):
         with open(filepath, "rb") as f:
             bytes = f.read()
             assert bytes == target_content_string.encode("utf-8")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
 
     manager = MemoryManager(
         pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
@@ -200,25 +154,12 @@ def test_write_data_to_block():
 
     assert block.used_memory == 9 and block.free_memory == 0 and block.block_size == 9
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_write_too_much_data_to_block():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_write_too_much_data_to_block")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     manager = MemoryManager(
         pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
@@ -235,25 +176,12 @@ def test_write_too_much_data_to_block():
     except:
         pass
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_read_data_from_block():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_read_data_from_block")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     manager = MemoryManager(
         pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
@@ -272,25 +200,12 @@ def test_read_data_from_block():
     byte_data = block.read(1, 7)
     assert byte_data == "ellowor".encode("utf-8")
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_block_rewind_and_write():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_block_rewind_and_write")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     def check_content(filepath, target_content_string):
         with open(filepath, "rb") as f:
@@ -316,20 +231,11 @@ def test_block_rewind_and_write():
     block.write("hey")
     check_content(pool_path, "00010hehey")
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_memory_manager_bootstrap():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_memory_manager_bootstrap")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
+    pool_folder, conf_path, block_file = _get_common_file_paths()
 
     pool_file_path = os.path.join(pool_folder, "pool_0")
 
@@ -352,18 +258,8 @@ def test_memory_manager_bootstrap():
 
 
 def test_block_allocate_corner_case():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_block_allocate_corner_case")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     manager = MemoryManager(
         pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
@@ -379,25 +275,12 @@ def test_block_allocate_corner_case():
     for block in manager.blocks:
         assert block.used_memory == 0 and block.free_memory == 1
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_block_current_offset():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_block_current_offset")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     manager = MemoryManager(
         pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
@@ -416,25 +299,12 @@ def test_block_current_offset():
     block.rewind(7)
     assert block.current_offset == 7
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_block_dict():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_block_dict")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     manager = MemoryManager(
         pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
@@ -449,25 +319,12 @@ def test_block_dict():
     for i in range(10):
         assert i in manager.block_dict
 
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    _clean_up()
 
 
 def test_pool_dict():
-    test_case_package_path = os.path.abspath(
-        os.path.join(package_root_path, "storage", "test_pool_dict")
-    )
-
-    pool_folder = os.path.join(test_case_package_path, "pools")
-    conf_path = os.path.join(test_case_package_path, "storage_conf.ini")
-    block_file = os.path.join(test_case_package_path, "block_file")
-
-    if os.path.exists(pool_folder):
-        shutil.rmtree(pool_folder)
-    if os.path.exists(block_file):
-        os.remove(block_file)
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
     manager = MemoryManager(
         pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
@@ -478,6 +335,75 @@ def test_pool_dict():
     for i in range(20):
         assert i in manager.pool_dict
 
+    _clean_up()
+
+
+def test_read_write_multi_blocks():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
+
+    pool_file_1 = os.path.join(pool_folder, 'pool_0')
+    pool_file_2 = os.path.join(pool_folder, 'pool_1')
+
+    def check_content(filepath, target_string):
+        with open(filepath, 'rb') as f:
+            code = f.read()
+            assert code == target_string.encode('utf-8')
+
+    manager = MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file)
+    block1 = manager.allocate_block(6)
+    block2 = manager.allocate_block(4)
+
+    block1.write('hello')
+    block2.write('hey')
+
+    check_content(pool_file_1, '00010hello')
+    check_content(pool_file_2, '000100hey0')
+
+    assert block1.read(1, 4) == 'ello'.encode('utf-8')
+    assert block2.read(2, 2) == 'y0'.encode('utf-8')
+    assert block1.read(3, 2) == 'lo'.encode('utf-8')
+    assert block2.read(0, 2) == 'he'.encode('utf-8')
+
+    _clean_up()
+
+
+def _get_common_file_paths():
+    check_name = None
+    frame = inspect.currentframe()
+    while frame:
+        if frame.f_code.co_name.startswith('test_'):
+            check_name = frame.f_code.co_name
+            break
+        frame = frame.f_back
+    assert check_name and check_name.startswith('test_')
+
+    pool_folder = os.path.abspath(
+        os.path.join(
+            package_root_path, "storage", check_name, "pools"
+        )
+    )
+    conf_path = os.path.abspath(
+        os.path.join(
+            package_root_path,
+            "storage",
+            check_name,
+            "storage_conf.ini",
+        )
+    )
+    block_file = os.path.abspath(
+        os.path.join(
+            package_root_path,
+            "storage",
+            check_name,
+            "block_file",
+        )
+    )
+    return pool_folder, conf_path, block_file
+
+
+def _clean_up():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
     if os.path.exists(pool_folder):
         shutil.rmtree(pool_folder)
     if os.path.exists(block_file):

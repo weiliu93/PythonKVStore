@@ -159,6 +159,50 @@ def test_checkout():
     _clean_up()
 
 
+def test_real_scenario():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
+
+    index = TreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+    ops = ['set', 'get', 'persist', 'clear']
+
+    # Now let's play!!
+    comparison_dict = {}
+    persist_dict = {}
+
+    for _ in range(20000):
+        op_type = random.randint(0, 10)
+        # weight array is [4, 3, 2, 1], since we want to test more `set` and `get` operations
+        if op_type <= 3:
+            op_type = 0
+        elif op_type <= 6:
+            op_type = 1
+        elif op_type == 8:
+            op_type = 2
+        else:
+            op_type = 3
+        if ops[op_type] == 'set':
+            key, value = random.randint(1, 100), random.randint(1, 100)
+            comparison_dict[key] = value
+            persist_dict[key] = False
+            index.set(key, value)
+        elif ops[op_type] == 'get':
+            key = random.randint(1, 100)
+            assert index.get(key, - 1) == comparison_dict.get(key, - 1)
+        elif ops[op_type] == 'persist':
+            waiting_for_persist = sum([not value for key, value in persist_dict.items()])
+            assert waiting_for_persist == index.persist()
+            persist_dict.clear()
+        else:
+            index.clear()
+            comparison_dict.clear()
+            persist_dict.clear()
+        assert sorted(list(comparison_dict.keys())) == sorted(list(index.keys()))
+        assert sorted(list(comparison_dict.items())) == sorted(list(index.key_value_pairs()))
+
+    _clean_up()
+
+
 def _get_common_file_paths():
     check_name = None
     frame = inspect.currentframe()
