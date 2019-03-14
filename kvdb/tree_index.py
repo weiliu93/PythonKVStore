@@ -10,11 +10,19 @@ class TreeIndex(KVIndex):
         self._current_block = None
         self._root = None
         self._value_header_length = (
-            int(self._memory_manager.conf.get("TREE_INDEX", "VALUE_HEADER_LENGTH", fallback=0))
+            int(
+                self._memory_manager.conf.get(
+                    "TREE_INDEX", "VALUE_HEADER_LENGTH", fallback=0
+                )
+            )
             or 10
         )
         self._memory_allocate_scale = (
-            int(self._memory_manager.conf.get("TREE_INDEX", "MEMORY_ALLOCATE_SCALE", fallback=0))
+            int(
+                self._memory_manager.conf.get(
+                    "TREE_INDEX", "MEMORY_ALLOCATE_SCALE", fallback=0
+                )
+            )
             or 10
         )
         self._index_history = []
@@ -61,6 +69,13 @@ class TreeIndex(KVIndex):
             else:
                 node = node.left
         return default
+
+    def remove(self, key):
+        # TODO implement remove in persistent binary tree
+
+
+
+        pass
 
     def persist(self):
         """Just update last valid tree inplace, return how many values have been persisted"""
@@ -117,9 +132,7 @@ class TreeIndex(KVIndex):
         while stack:
             node = stack.pop()
             if isinstance(node.value, TreeValue):
-                pairs.append(
-                    (node.key, self._load_value_from_disk(node.value))
-                )
+                pairs.append((node.key, self._load_value_from_disk(node.value)))
             else:
                 pairs.append((node.key, node.value))
             node = node.right

@@ -92,6 +92,11 @@ class MemoryManager(object):
 
         return block
 
+    def close(self):
+        """close all pool resources"""
+        for pool in self._pool_list:
+            pool.close()
+
     def _allocate_new_pool(self):
         pool_path = os.path.abspath(
             os.path.join(self._pool_folder, "pool_{}".format(self._next_pool_id))

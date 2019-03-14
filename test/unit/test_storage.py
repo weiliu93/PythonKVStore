@@ -342,28 +342,30 @@ def test_read_write_multi_blocks():
     pool_folder, conf_path, block_file = _get_common_file_paths()
     _clean_up()
 
-    pool_file_1 = os.path.join(pool_folder, 'pool_0')
-    pool_file_2 = os.path.join(pool_folder, 'pool_1')
+    pool_file_1 = os.path.join(pool_folder, "pool_0")
+    pool_file_2 = os.path.join(pool_folder, "pool_1")
 
     def check_content(filepath, target_string):
-        with open(filepath, 'rb') as f:
+        with open(filepath, "rb") as f:
             code = f.read()
-            assert code == target_string.encode('utf-8')
+            assert code == target_string.encode("utf-8")
 
-    manager = MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file)
+    manager = MemoryManager(
+        pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
+    )
     block1 = manager.allocate_block(6)
     block2 = manager.allocate_block(4)
 
-    block1.write('hello')
-    block2.write('hey')
+    block1.write("hello")
+    block2.write("hey")
 
-    check_content(pool_file_1, '00010hello')
-    check_content(pool_file_2, '000100hey0')
+    check_content(pool_file_1, "00010hello")
+    check_content(pool_file_2, "000100hey0")
 
-    assert block1.read(1, 4) == 'ello'.encode('utf-8')
-    assert block2.read(2, 2) == 'y0'.encode('utf-8')
-    assert block1.read(3, 2) == 'lo'.encode('utf-8')
-    assert block2.read(0, 2) == 'he'.encode('utf-8')
+    assert block1.read(1, 4) == "ello".encode("utf-8")
+    assert block2.read(2, 2) == "y0".encode("utf-8")
+    assert block1.read(3, 2) == "lo".encode("utf-8")
+    assert block2.read(0, 2) == "he".encode("utf-8")
 
     _clean_up()
 
@@ -372,32 +374,20 @@ def _get_common_file_paths():
     check_name = None
     frame = inspect.currentframe()
     while frame:
-        if frame.f_code.co_name.startswith('test_'):
+        if frame.f_code.co_name.startswith("test_"):
             check_name = frame.f_code.co_name
             break
         frame = frame.f_back
-    assert check_name and check_name.startswith('test_')
+    assert check_name and check_name.startswith("test_")
 
     pool_folder = os.path.abspath(
-        os.path.join(
-            package_root_path, "storage", check_name, "pools"
-        )
+        os.path.join(package_root_path, "storage", check_name, "pools")
     )
     conf_path = os.path.abspath(
-        os.path.join(
-            package_root_path,
-            "storage",
-            check_name,
-            "storage_conf.ini",
-        )
+        os.path.join(package_root_path, "storage", check_name, "storage_conf.ini")
     )
     block_file = os.path.abspath(
-        os.path.join(
-            package_root_path,
-            "storage",
-            check_name,
-            "block_file",
-        )
+        os.path.join(package_root_path, "storage", check_name, "block_file")
     )
     return pool_folder, conf_path, block_file
 

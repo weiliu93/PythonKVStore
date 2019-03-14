@@ -7,6 +7,10 @@ class KVIndex(object):
         """get key's corresponding value, otherwise return default value"""
         pass
 
+    def remove(self, key):
+        """remove key from key-value store"""
+        pass
+
     def keys(self):
         """return all keys"""
         pass
