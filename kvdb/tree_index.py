@@ -71,11 +71,52 @@ class TreeIndex(KVIndex):
         return default
 
     def remove(self, key):
-        # TODO implement remove in persistent binary tree
+        node, result = self._remove_traverse(self._root, key)
+        self._update_node(node)
+        return result
 
-
-
-        pass
+    def _remove_traverse(self, node, key):
+        if node:
+            if node.key == key:
+                if node.left:
+                    # find predecessor
+                    left_node = node.left
+                    while left_node.right:
+                        left_node = left_node.right
+                    left_node_key, left_node_value = left_node.key, left_node.value
+                    left_node, _ = self._remove_traverse(node.left, left_node_key)
+                    # left subtree exists
+                    return TreeNode(left_node_key, left_node_value,
+                                    left_node, node.right), True
+                elif node.right:
+                    # find successor
+                    right_node = node.right
+                    while right_node.left:
+                        right_node = right_node.left
+                    right_node_key, right_node_value = right_node.key, right_node.value
+                    right_node, _ = self._remove_traverse(node.right, right_node_key)
+                    # right subtree exists
+                    return TreeNode(right_node_key, right_node_value,
+                                    node.left, right_node), True
+                else:
+                    # leaf node
+                    return None, True
+            else:
+                if key < node.key:
+                    left_node, left_result = self._remove_traverse(node.left, key)
+                    if left_result:
+                        new_node, result = TreeNode(node.key, node.value, left_node, node.right), left_result
+                    else:
+                        new_node, result = node, False
+                else:
+                    right_node, right_result = self._remove_traverse(node.right, key)
+                    if right_result:
+                        new_node, result = TreeNode(node.key, node.value, node.left, right_node), right_result
+                    else:
+                        new_node, result = node, False
+                return new_node, result
+        else:
+            return None, False
 
     def persist(self):
         """Just update last valid tree inplace, return how many values have been persisted"""

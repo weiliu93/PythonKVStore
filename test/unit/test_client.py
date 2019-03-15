@@ -33,6 +33,25 @@ def test_basic_client_set_and_get():
     _clean_up()
 
 
+def test_basic_remove():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
+
+    client = Client(conf_path = conf_path, pool_folder = pool_folder, block_file = block_file)
+    client.set(1, 10)
+    client.set(100, 4)
+
+    assert client.remove(1) == True
+    assert client.remove(1) == False
+    assert client.remove(10) == False
+    assert client.remove(100) == True
+    assert client.remove(1) == False
+    assert client.remove(100) == False
+    assert client.remove(10) == False
+
+    _clean_up()
+
+
 def test_load_index_from_file():
     pool_folder, conf_path, block_file = _get_common_file_paths()
     _clean_up()

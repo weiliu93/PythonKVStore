@@ -51,6 +51,9 @@ class Client(object):
     def get(self, key, default=None):
         return self._index.get(key, default)
 
+    def remove(self, key):
+        return self._index.remove(key)
+
     def keys(self):
         return self._index.keys()
 

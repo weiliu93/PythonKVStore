@@ -197,7 +197,7 @@ def test_real_scenario():
             pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
         )
     )
-    ops = ["set", "get", "persist", "clear"]
+    ops = ["set", "get", "persist", "remove", "clear"]
 
     # Now let's play!!
     comparison_dict = {}
@@ -205,15 +205,17 @@ def test_real_scenario():
 
     for _ in range(20000):
         op_type = random.randint(0, 10)
-        # weight array is [4, 3, 2, 1], since we want to test more `set` and `get` operations
-        if op_type <= 3:
+        # weight array is [3, 2, 2, 2, 1]
+        if op_type <= 2:
             op_type = 0
-        elif op_type <= 6:
+        elif op_type <= 4:
             op_type = 1
-        elif op_type == 8:
+        elif op_type == 6:
             op_type = 2
-        else:
+        elif op_type <= 8:
             op_type = 3
+        else:
+            op_type = 4
         if ops[op_type] == "set":
             key, value = random.randint(1, 100), random.randint(1, 100)
             comparison_dict[key] = value
@@ -228,6 +230,16 @@ def test_real_scenario():
             )
             assert waiting_for_persist == index.persist()
             persist_dict.clear()
+        elif ops[op_type] == 'remove':
+            key = random.randint(1, 100)
+            if key in comparison_dict:
+                comparison_dict.pop(key)
+                assert index.remove(key) == True
+                # remove key from persistence candidates also
+                if key in persist_dict:
+                    persist_dict.pop(key)
+            else:
+                assert index.remove(key) == False
         else:
             index.clear()
             comparison_dict.clear()
@@ -236,6 +248,109 @@ def test_real_scenario():
         assert sorted(list(comparison_dict.items())) == sorted(
             list(index.key_value_pairs())
         )
+
+    _clean_up()
+
+
+def test_remove():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
+
+    index = TreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+
+    values = set()
+    for _ in range(1000):
+        value = random.randint(1, 1200)
+        while value in values:
+            value = random.randint(1, 1200)
+        values.add(value)
+        index.set(value, value)
+
+    for _ in range(2000):
+        value = random.randint(1, 1200)
+        if value in values:
+            values.remove(value)
+            assert index.remove(value) == True
+        else:
+            assert index.remove(value) == False
+
+    _clean_up()
+
+
+def test_index_history():
+    def collect_tree_values(tree_node):
+        stack, values = [], []
+        while tree_node:
+            stack.append(tree_node)
+            tree_node = tree_node.left
+        while stack:
+            current = stack.pop()
+            values.append(current.key)
+            current = current.right
+            while current:
+                stack.append(current)
+                current = current.left
+        return values
+
+    def check_history_nodes_are_different(history):
+        nodes = {node for node in history}
+        assert len(nodes) == len(history)
+
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
+
+    index = TreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+    index.set(1, 10)
+    assert len(index._index_history) == 1
+    assert collect_tree_values(index._index_history[0]) == [1]
+    check_history_nodes_are_different(index._index_history)
+
+    index.set(2, 100)
+    assert len(index._index_history) == 2
+    assert collect_tree_values(index._index_history[0]) == [1]
+    assert collect_tree_values(index._index_history[1]) == [1, 2]
+    check_history_nodes_are_different(index._index_history)
+
+    assert index.get(1) == 10
+    assert len(index._index_history) == 2
+    assert collect_tree_values(index._index_history[0]) == [1]
+    assert collect_tree_values(index._index_history[1]) == [1, 2]
+    check_history_nodes_are_different(index._index_history)
+
+    # persist will never pump up the version
+    assert index.persist() == 2
+    assert len(index._index_history) == 2
+    assert collect_tree_values(index._index_history[0]) == [1]
+    assert collect_tree_values(index._index_history[1]) == [1, 2]
+    check_history_nodes_are_different(index._index_history)
+
+    assert index.persist() == 0
+    assert len(index._index_history) == 2
+    assert collect_tree_values(index._index_history[0]) == [1]
+    assert collect_tree_values(index._index_history[1]) == [1, 2]
+    check_history_nodes_are_different(index._index_history)
+
+    assert index.remove(1) == True
+    assert len(index._index_history) == 3
+    assert collect_tree_values(index._index_history[0]) == [1]
+    assert collect_tree_values(index._index_history[1]) == [1, 2]
+    assert collect_tree_values(index._index_history[2]) == [2]
+    check_history_nodes_are_different(index._index_history)
+
+    # if element is not exists, tree won't be modified
+    assert index.remove(1) == False
+    assert len(index._index_history) == 3
+    assert collect_tree_values(index._index_history[0]) == [1]
+    assert collect_tree_values(index._index_history[1]) == [1, 2]
+    assert collect_tree_values(index._index_history[2]) == [2]
+    check_history_nodes_are_different(index._index_history)
+
+    assert index.remove(100) == False
+    assert len(index._index_history) == 3
+    assert collect_tree_values(index._index_history[0]) == [1]
+    assert collect_tree_values(index._index_history[1]) == [1, 2]
+    assert collect_tree_values(index._index_history[2]) == [2]
+    check_history_nodes_are_different(index._index_history)
 
     _clean_up()
 
