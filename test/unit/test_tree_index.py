@@ -230,7 +230,7 @@ def test_real_scenario():
             )
             assert waiting_for_persist == index.persist()
             persist_dict.clear()
-        elif ops[op_type] == 'remove':
+        elif ops[op_type] == "remove":
             key = random.randint(1, 100)
             if key in comparison_dict:
                 comparison_dict.pop(key)
@@ -256,7 +256,11 @@ def test_remove():
     pool_folder, conf_path, block_file = _get_common_file_paths()
     _clean_up()
 
-    index = TreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+    index = TreeIndex(
+        MemoryManager(
+            pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
+        )
+    )
 
     values = set()
     for _ in range(1000):
@@ -299,7 +303,11 @@ def test_index_history():
     pool_folder, conf_path, block_file = _get_common_file_paths()
     _clean_up()
 
-    index = TreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+    index = TreeIndex(
+        MemoryManager(
+            pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
+        )
+    )
     index.set(1, 10)
     assert len(index._index_history) == 1
     assert collect_tree_values(index._index_history[0]) == [1]

@@ -86,8 +86,10 @@ class TreeIndex(KVIndex):
                     left_node_key, left_node_value = left_node.key, left_node.value
                     left_node, _ = self._remove_traverse(node.left, left_node_key)
                     # left subtree exists
-                    return TreeNode(left_node_key, left_node_value,
-                                    left_node, node.right), True
+                    return (
+                        TreeNode(left_node_key, left_node_value, left_node, node.right),
+                        True,
+                    )
                 elif node.right:
                     # find successor
                     right_node = node.right
@@ -96,8 +98,12 @@ class TreeIndex(KVIndex):
                     right_node_key, right_node_value = right_node.key, right_node.value
                     right_node, _ = self._remove_traverse(node.right, right_node_key)
                     # right subtree exists
-                    return TreeNode(right_node_key, right_node_value,
-                                    node.left, right_node), True
+                    return (
+                        TreeNode(
+                            right_node_key, right_node_value, node.left, right_node
+                        ),
+                        True,
+                    )
                 else:
                     # leaf node
                     return None, True
@@ -105,13 +111,19 @@ class TreeIndex(KVIndex):
                 if key < node.key:
                     left_node, left_result = self._remove_traverse(node.left, key)
                     if left_result:
-                        new_node, result = TreeNode(node.key, node.value, left_node, node.right), left_result
+                        new_node, result = (
+                            TreeNode(node.key, node.value, left_node, node.right),
+                            left_result,
+                        )
                     else:
                         new_node, result = node, False
                 else:
                     right_node, right_result = self._remove_traverse(node.right, key)
                     if right_result:
-                        new_node, result = TreeNode(node.key, node.value, node.left, right_node), right_result
+                        new_node, result = (
+                            TreeNode(node.key, node.value, node.left, right_node),
+                            right_result,
+                        )
                     else:
                         new_node, result = node, False
                 return new_node, result

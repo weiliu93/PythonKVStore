@@ -37,7 +37,7 @@ def test_basic_remove():
     pool_folder, conf_path, block_file = _get_common_file_paths()
     _clean_up()
 
-    client = Client(conf_path = conf_path, pool_folder = pool_folder, block_file = block_file)
+    client = Client(conf_path=conf_path, pool_folder=pool_folder, block_file=block_file)
     client.set(1, 10)
     client.set(100, 4)
 

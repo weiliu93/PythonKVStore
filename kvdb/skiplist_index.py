@@ -6,7 +6,8 @@ import pickle
 class SkipListIndex(KVIndex):
     def __init__(self, memory_manager):
         self._memory_manager = memory_manager
-        self._current_block = None
+        self._blocks = []
+        # value's length header, represents the byte array's length of value
         self._value_header_length = (
             int(
                 self._memory_manager.conf.get(
@@ -15,6 +16,7 @@ class SkipListIndex(KVIndex):
             )
             or 10
         )
+        # every time we need to allocate a new block, scale * target_memory would be allocated
         self._memory_allocate_scale = (
             int(
                 self._memory_manager.conf.get(
@@ -22,6 +24,15 @@ class SkipListIndex(KVIndex):
                 )
             )
             or 10
+        )
+        # threshold to spill data to disk
+        self._block_compact_buffer_length = (
+            int(
+                self._memory_manager.conf.get(
+                    "SKIPLIST_INDEX", "BLOCK_COMPACT_BUFFER_LENGTH", fallback=0
+                )
+            )
+            or 512
         )
         # dummy heads
         self._heads = [SkipListNode(key=-1, value=-1)]
@@ -108,6 +119,42 @@ class SkipListIndex(KVIndex):
     def height(self):
         return len(self._heads)
 
+    def compact(self):
+        current, block_to_entity_dict = self._heads[0], {}
+        while current.right:
+            skip_list_node_value = current.right.value
+            block_to_entity_dict.setdefault(skip_list_node_value.block_id, [])
+            block_to_entity_dict[skip_list_node_value.block_id].append(
+                skip_list_node_value
+            )
+            current = current.right
+        for _, value_list in block_to_entity_dict.items():
+            value_list.sort(key=lambda value: value.address)
+        for block in self._blocks:
+            self._compact_block(block, block_to_entity_dict.get(block.block_id, []))
+
+    def _compact_block(self, block, value_list):
+        byte_array, offset = bytearray(), 0
+        # rewind to start, then batch processing
+        block.rewind(0)
+        for value in value_list:
+            header = block.read(value.address, self._value_header_length)
+            data_length = int(header)
+            # append header and data details
+            byte_array.extend(header)
+            byte_array.extend(
+                block.read(value.address + self._value_header_length, data_length)
+            )
+            # update memory node's address reference
+            value.address = offset
+            offset += self._value_header_length + data_length
+            # spill data to disk
+            if len(byte_array) > self._block_compact_buffer_length:
+                block.write(bytes(byte_array))
+                byte_array = bytearray()
+        if len(byte_array) > 0:
+            block.write(bytes(byte_array))
+
     def _random_level(self):
         level = 0
         while random.random() <= 0.5:
@@ -124,19 +171,28 @@ class SkipListIndex(KVIndex):
             ("%0{}d".format(self._value_header_length) % length).encode("utf-8")
         )
         byte_array.extend(string)
-        # memory is exhausted
-        if not self._current_block or (
-            self._current_block.free_memory < len(byte_array)
-        ):
-            self._current_block = self._memory_manager.allocate_block(
+
+        # find appropriate block, use linear algorithm here. since the total number of blocks
+        # should not be too huge, that means this algorithm is okay in most cases
+        closest_diff, index = -1, -1
+        for ind, block in enumerate(self._blocks):
+            if block.free_memory >= len(byte_array):
+                remain = block.free_memory - len(byte_array)
+                if remain < closest_diff or closest_diff < 0:
+                    closest_diff = remain
+                    index = ind
+        # if we find a available block
+        if index >= 0:
+            current_block = self._blocks[index]
+        else:
+            # if all blocks are full
+            current_block = self._memory_manager.allocate_block(
                 len(byte_array) * self._memory_allocate_scale
             )
+            self._blocks.append(current_block)
 
-        block_id, address = (
-            self._current_block.block_id,
-            self._current_block.current_offset,
-        )
-        write_bytes = self._current_block.write(bytes(byte_array))
+        block_id, address = (current_block.block_id, current_block.current_offset)
+        write_bytes = current_block.write(bytes(byte_array))
 
         assert write_bytes == len(byte_array)
 
