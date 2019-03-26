@@ -26,6 +26,37 @@ def test_basic_btree_set_and_get():
     _clean_up()
 
 
+def test_basic_btree_remove():
+
+
+    pass
+
+
+def test_btree_clear():
+
+
+    pass
+
+
+def test_btree_keys():
+
+
+    pass
+
+
+def test_btree_key_value_pairs():
+
+
+    pass
+
+
+def test_btree_real_scenario():
+
+
+
+    pass
+
+
 def _get_test_case_package_path():
     check_name = None
     frame = inspect.currentframe()

@@ -100,11 +100,32 @@ class BTreeIndex(KVIndex):
         return default
 
     def remove(self, key):
-        # TODO need sophisticated design
+        btree_node = self._find_btree_node_with_given_key(key)
+        if btree_node:
+            key_node = btree_node.find_key_node(key)
+            predecessor_key_node = self._find_predecessor_key_node(key_node)
+            current = predecessor_key_node.prev.current_btree_node
+            # replace current key_value with predecessor
+            key_node.key = predecessor_key_node.key
+            key_node.value = predecessor_key_node.value
+            # delete predecessor key_node
+            predecessor_key_node.prev.next = predecessor_key_node.next.next
+            predecessor_key_node.prev.next.prev = predecessor_key_node.prev
+            current.refresh()
+            # re-balance layer by layer
+            threshold = (self._btree_rank + 1) // 2 - 1
+            while current.size < threshold:
+                # first try to steal key from sibling
+                # TODO fix this afternoon
 
 
+                # then merge current node with sibling node
+                # TODO also very interesting!!
 
-        pass
+
+                pass
+        else:
+            return False
 
     def keys(self):
         return map(lambda pair: pair[0], self.key_value_pairs())
@@ -178,6 +199,27 @@ class BTreeIndex(KVIndex):
         if node.next:
             node.next.prev = node.prev
 
+    def _find_btree_node_with_given_key(self, key):
+        current = self._root
+        while current:
+            head, prev_list_node = current.list_head.next.next, current.list_head.next
+            while head and head.key < key:
+                head = head.next.next
+                prev_list_node = prev_list_node.next.next
+            if head and head.key == key:
+                return prev_list_node.current_btree_node
+            else:
+                current = prev_list_node.next_btree_node
+        return None
+
+    def _find_predecessor_key_node(self, key_node):
+        current = key_node.prev
+        while current:
+            if current.next_btree_node:
+                current = current.next_btree_node.last_tree_node()
+            else:
+                break
+        return current.prev
 
 class BTreeNode(object):
     def __init__(self, list_head=None, parent_tree_list_node=None, size=0):
@@ -206,6 +248,31 @@ class BTreeNode(object):
             else:
                 break
         self.size = ans
+
+    def is_leaf(self):
+        return not self.list_head.next.next_btree_node
+
+    def first_key_node(self):
+        return self.list_head.next.next
+
+    def first_tree_node(self):
+        return self.first_key_node().prev
+
+    def last_key_node(self):
+        node, ans = self.list_head.next.next, None
+        while node:
+            ans = node
+            node = node.next.next
+        return ans
+
+    def last_tree_node(self):
+        return self.last_key_node().next
+
+    def find_key_node(self, key):
+        node = self.list_head.next.next
+        while node and node.key != key:
+            node = node.next.next
+        return node
 
 
 class ListNode(object):
