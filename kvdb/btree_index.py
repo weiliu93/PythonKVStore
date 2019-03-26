@@ -1,6 +1,8 @@
 from kv_index import KVIndex
 from memory_manager import MemoryManager
 
+import pickle
+
 
 class BTreeIndex(KVIndex):
     """Tree node structure
@@ -13,8 +15,11 @@ class BTreeIndex(KVIndex):
     def __init__(self, memory_manager, btree_rank=5):
         self._root = BTreeNode()
         self._btree_rank = btree_rank
+        self._memory_manager = memory_manager
 
     def set(self, key, value):
+        # turn object into persistence storage
+        value = TreeValue.from_value(value, self._memory_manager)
         current, current_list_node = self._root, None
         # current BTree node
         while current:
@@ -92,7 +97,7 @@ class BTreeIndex(KVIndex):
             head, prev_list_node = current.list_head.next.next, current.list_head.next
             while head:
                 if head.key == key:
-                    return head.value
+                    return head.value.load_value(self._memory_manager)
                 elif head.key > key:
                     break
                 head = head.next.next
@@ -104,18 +109,36 @@ class BTreeIndex(KVIndex):
         btree_node = self._find_btree_node_with_given_key(key)
         if btree_node:
             key_node = btree_node.find_key_node(key)
+            # use predecessor first
             predecessor_key_node = self._find_predecessor_key_node(key_node)
-            current = predecessor_key_node.prev.current_btree_node
-            # replace current key_value with predecessor
-            key_node.key = predecessor_key_node.key
-            key_node.value = predecessor_key_node.value
-            # delete predecessor key_node
-            predecessor_key_node.prev.next = predecessor_key_node.next.next
-            predecessor_key_node.prev.next.prev = predecessor_key_node.prev
+            if predecessor_key_node:
+                current = predecessor_key_node.prev.current_btree_node
+                # replace current key_value with predecessor
+                key_node.key = predecessor_key_node.key
+                key_node.value = predecessor_key_node.value
+                # delete predecessor key_node
+                predecessor_key_node.prev.next = predecessor_key_node.next.next
+                if predecessor_key_node.prev.next:
+                    predecessor_key_node.prev.next.prev = predecessor_key_node.prev
+            else:
+                # then use successor
+                successor_key_node = self._find_successor_key_node(key_node)
+                if successor_key_node:
+                    current = successor_key_node.prev.current_btree_node
+                    # replace current key_value with successor
+                    key_node.key, key_node.value = successor_key_node.key, successor_key_node.value
+                    # delete successor key_node
+                    successor_key_node.prev.next = successor_key_node.next.next
+                    if successor_key_node.prev.next:
+                        successor_key_node.prev.next.prev = successor_key_node.prev
+                else:
+                    # current btree node become empty, no predecessors or successors found
+                    key_node.prev.next = None
+                    current = key_node.prev.current_btree_node
             current.refresh()
             # re-balance layer by layer
             threshold = (self._btree_rank + 1) // 2 - 1
-            while current.size < threshold:
+            while not current.is_root() and current.size < threshold:
                 # try to steal key from left sibling
                 left_sibling = current.left_sibling_btree_node()
                 if left_sibling:
@@ -140,10 +163,11 @@ class BTreeIndex(KVIndex):
                         # append key_node and tree_list_node
                         current.append_key(right_key_node, tree_list_node)
                         break
-                # TODO then merge current node with sibling node
+                # TODO then merge current key node with sibling node, replace key_node in parent_btree_node
 
 
-                pass
+
+            return True
         else:
             return False
 
@@ -239,8 +263,21 @@ class BTreeIndex(KVIndex):
                 current = current.next_btree_node.last_tree_node()
             else:
                 break
-        return current.prev
+        # tricky part here, current.prev could be a ListNode
+        if isinstance(current.prev, KeyListNode):
+            return current.prev
+        else:
+            return None
 
+    def _find_successor_key_node(self, key_node):
+        current = key_node.next
+        while current:
+            if current.next_btree_node:
+                current = current.next_btree_node.first_tree_node()
+            else:
+                break
+        # current.next will return legal key_node or None
+        return current.next
 
 class BTreeNode(object):
     def __init__(self, list_head=None, parent_tree_list_node=None, size=0):
@@ -272,6 +309,9 @@ class BTreeNode(object):
 
     def is_leaf(self):
         return not self.list_head.next.next_btree_node
+
+    def is_root(self):
+        return not self.parent_tree_list_node
 
     def first_key_node(self):
         return self.list_head.next.next
@@ -371,9 +411,32 @@ class KeyListNode(ListNode):
     def __init__(self, key, value, prev=None, next=None):
         super().__init__(prev, next)
         self.key = key
-        # TODO data should be persisted in disk
         self.value = value
 
+class TreeValue(object):
+    def __init__(self, block_id, address):
+        self.block_id = block_id
+        self.address = address
+
+    @staticmethod
+    def from_value(value, memory_manager):
+        value_string = pickle.dumps(value)
+        length = len(value_string)
+        value_header_length = int(memory_manager.conf.get("BTREE_INDEX", "VALUE_HEADER_LENGTH"))
+        output_string = ("%0{}d".format(value_header_length) % length).encode("utf-8") + value_string
+        block = memory_manager.allocate_block(len(output_string))
+        block.write(output_string)
+        return TreeValue(block.block_id, 0)
+
+    def load_value(self, memory_manager):
+        value_header_length = int(memory_manager.conf.get("BTREE_INDEX", "VALUE_HEADER_LENGTH"))
+        block = memory_manager.block_dict[self.block_id]
+        length = int(block.read(self.address, value_header_length))
+        byte_string = block.read(self.address + value_header_length, length)
+        return pickle.loads(byte_string)
+
+    def __str__(self):
+        return "(block_id: {}, address: {})".format(self.block_id, self.address)
 
 class TreeListNode(ListNode):
     def __init__(self, current_btree_node, next_btree_node=None, prev=None, next=None):
