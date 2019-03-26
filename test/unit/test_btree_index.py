@@ -21,38 +21,30 @@ def test_basic_btree_set_and_get():
     _clean_up()
     # TODO add btree index conf
 
-
-
     _clean_up()
 
 
 def test_basic_btree_remove():
-
 
     pass
 
 
 def test_btree_clear():
 
-
     pass
 
 
 def test_btree_keys():
-
 
     pass
 
 
 def test_btree_key_value_pairs():
 
-
     pass
 
 
 def test_btree_real_scenario():
-
-
 
     pass
 
@@ -66,9 +58,7 @@ def _get_test_case_package_path():
             break
         frame = frame.f_back
     assert check_name and check_name.startswith("test_")
-    return os.path.abspath(
-        os.path.join(package_root_path, "btree_index", check_name)
-    )
+    return os.path.abspath(os.path.join(package_root_path, "btree_index", check_name))
 
 
 def _get_common_file_paths():
@@ -85,9 +75,7 @@ def _get_common_file_paths():
         os.path.join(package_root_path, "btree_index", check_name, "pools")
     )
     conf_path = os.path.abspath(
-        os.path.join(
-            package_root_path, "btree_index", check_name, "storage_conf.ini"
-        )
+        os.path.join(package_root_path, "btree_index", check_name, "storage_conf.ini")
     )
     block_file = os.path.abspath(
         os.path.join(package_root_path, "btree_index", check_name, "block_file")

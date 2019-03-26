@@ -9,6 +9,7 @@ class BTreeIndex(KVIndex):
             /   |   \                  /   |   \
        node1 - key1 - node2       node1 - key1 - node2
     """
+
     def __init__(self, memory_manager, btree_rank=5):
         self._root = BTreeNode()
         self._btree_rank = btree_rank
@@ -115,12 +116,31 @@ class BTreeIndex(KVIndex):
             # re-balance layer by layer
             threshold = (self._btree_rank + 1) // 2 - 1
             while current.size < threshold:
-                # first try to steal key from sibling
-                # TODO fix this afternoon
-
-
-                # then merge current node with sibling node
-                # TODO also very interesting!!
+                # try to steal key from left sibling
+                left_sibling = current.left_sibling_btree_node()
+                if left_sibling:
+                    left_key_node = current.parent_tree_list_node.prev
+                    if left_sibling.size > threshold:
+                        key_node, tree_list_node = left_sibling.pop_last_key()
+                        # swap key_node and left_key_node
+                        left_key_node.key, key_node.key = key_node.key, left_key_node.key
+                        left_key_node.value, key_node.value = key_node.value, left_key_node.value
+                        # add key_node and tree_list_node ahead
+                        current.add_key_ahead(left_key_node, tree_list_node)
+                        break
+                # try to steal key from right sibling
+                right_sibling = current.right_sibling_btree_node()
+                if right_sibling:
+                    right_key_node = current.parent_tree_list_node.next
+                    if right_sibling.size > threshold:
+                        key_node, tree_list_node = right_sibling.pop_first_key()
+                        # swap key_node and right_key_node
+                        right_key_node.key, key_node.key = key_node.key, right_key_node.key
+                        right_key_node.value, key_node.value = key_node.value, right_key_node.value
+                        # append key_node and tree_list_node
+                        current.append_key(right_key_node, tree_list_node)
+                        break
+                # TODO then merge current node with sibling node
 
 
                 pass
@@ -221,6 +241,7 @@ class BTreeIndex(KVIndex):
                 break
         return current.prev
 
+
 class BTreeNode(object):
     def __init__(self, list_head=None, parent_tree_list_node=None, size=0):
         # be careful, list_head has a dummy head
@@ -274,6 +295,69 @@ class BTreeNode(object):
             node = node.next.next
         return node
 
+    def parent_btree_node(self):
+        if self.parent_tree_list_node:
+            return self.parent_tree_list_node.current_btree_node
+        else:
+            return None
+
+    def left_sibling_btree_node(self):
+        if self.parent_tree_list_node:
+            # jump to parent btree node
+            node = self.parent_tree_list_node.prev.prev
+            if node:
+                return node.next_btree_node
+        return None
+
+    def right_sibling_btree_node(self):
+        if self.parent_tree_list_node and self.parent_tree_list_node.next:
+            # jump to parent btree node
+            node = self.parent_tree_list_node.next.next
+            if node:
+                return node.next_btree_node
+        return None
+
+    def pop_last_key(self):
+        key_node = self.last_key_node()
+        tree_list_node = self.last_tree_node()
+        key_node.prev.next = None
+        # reset all pointers
+        key_node.prev = key_node.next = tree_list_node.prev = tree_list_node.next = None
+        self.refresh()
+        return key_node, tree_list_node
+
+    def pop_first_key(self):
+        key_node = self.first_key_node()
+        tree_list_node = self.first_tree_node()
+        self.list_head.next = key_node.next
+        self.list_head.next.prev = self.list_head
+        # reset all pointers
+        key_node.prev = key_node.next = tree_list_node.prev = tree_list_node.next = None
+        self.refresh()
+        return key_node, tree_list_node
+
+    def append_key(self, key_node, tree_list_node):
+        last_tree_list_node = self.last_tree_node()
+        # first key_node, then tree_list_node
+        key_node.next = tree_list_node
+        tree_list_node.prev = key_node
+        last_tree_list_node.next = key_node
+        key_node.prev = last_tree_list_node
+        tree_list_node.next = None
+        self.refresh()
+
+    def add_key_ahead(self, key_node, tree_list_node):
+        next_node = self.list_head.next
+        # first tree_list_node, then key_node
+        tree_list_node.next = key_node
+        tree_list_node.next.prev = tree_list_node
+        # link tree_list_node with list_head
+        tree_list_node.prev = self.list_head
+        tree_list_node.prev.next = tree_list_node
+        # link key_node with list_head.next
+        key_node.next = next_node
+        key_node.next.prev = key_node
+        self.refresh()
 
 class ListNode(object):
     """Doubly Linked List Node"""
