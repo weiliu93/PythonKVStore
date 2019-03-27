@@ -126,7 +126,10 @@ class BTreeIndex(KVIndex):
                 if successor_key_node:
                     current = successor_key_node.prev.current_btree_node
                     # replace current key_value with successor
-                    key_node.key, key_node.value = successor_key_node.key, successor_key_node.value
+                    key_node.key, key_node.value = (
+                        successor_key_node.key,
+                        successor_key_node.value,
+                    )
                     # delete successor key_node
                     successor_key_node.prev.next = successor_key_node.next.next
                     if successor_key_node.prev.next:
@@ -146,8 +149,14 @@ class BTreeIndex(KVIndex):
                     if left_sibling.size > threshold:
                         key_node, tree_list_node = left_sibling.pop_last_key()
                         # swap key_node and left_key_node
-                        left_key_node.key, key_node.key = key_node.key, left_key_node.key
-                        left_key_node.value, key_node.value = key_node.value, left_key_node.value
+                        left_key_node.key, key_node.key = (
+                            key_node.key,
+                            left_key_node.key,
+                        )
+                        left_key_node.value, key_node.value = (
+                            key_node.value,
+                            left_key_node.value,
+                        )
                         # add key_node and tree_list_node ahead
                         current.add_key_ahead(key_node, tree_list_node)
                         break
@@ -158,8 +167,14 @@ class BTreeIndex(KVIndex):
                     if right_sibling.size > threshold:
                         key_node, tree_list_node = right_sibling.pop_first_key()
                         # swap key_node and right_key_node
-                        right_key_node.key, key_node.key = key_node.key, right_key_node.key
-                        right_key_node.value, key_node.value = key_node.value, right_key_node.value
+                        right_key_node.key, key_node.key = (
+                            key_node.key,
+                            right_key_node.key,
+                        )
+                        right_key_node.value, key_node.value = (
+                            key_node.value,
+                            right_key_node.value,
+                        )
                         # append key_node and tree_list_node
                         current.append_key(key_node, tree_list_node)
                         break
@@ -311,6 +326,7 @@ class BTreeIndex(KVIndex):
         # current.next will return legal key_node or None
         return current.next
 
+
 class BTreeNode(object):
     def __init__(self, list_head=None, parent_tree_list_node=None, size=0):
         # be careful, list_head has a dummy head
@@ -321,6 +337,8 @@ class BTreeNode(object):
             self.list_head.next = TreeListNode(self, prev=self.list_head, next=None)
         self.parent_tree_list_node = parent_tree_list_node
         self.size = size
+        # adjust size and current_btree_node to correct value
+        self.refresh()
 
     def refresh(self):
         """refresh all list node's current_btree_node and btree_node's size"""
@@ -455,6 +473,7 @@ class BTreeNode(object):
             node = node.next
         return "(" + ", ".join(output_list) + ")"
 
+
 class ListNode(object):
     """Doubly Linked List Node"""
 
@@ -472,6 +491,7 @@ class KeyListNode(ListNode):
     def __str__(self):
         return "(key: {}, value: {})".format(self.key, self.value)
 
+
 class TreeValue(object):
     def __init__(self, block_id, address):
         self.block_id = block_id
@@ -481,14 +501,20 @@ class TreeValue(object):
     def from_value(value, memory_manager):
         value_string = pickle.dumps(value)
         length = len(value_string)
-        value_header_length = int(memory_manager.conf.get("BTREE_INDEX", "VALUE_HEADER_LENGTH"))
-        output_string = ("%0{}d".format(value_header_length) % length).encode("utf-8") + value_string
+        value_header_length = int(
+            memory_manager.conf.get("BTREE_INDEX", "VALUE_HEADER_LENGTH")
+        )
+        output_string = ("%0{}d".format(value_header_length) % length).encode(
+            "utf-8"
+        ) + value_string
         block = memory_manager.allocate_block(len(output_string))
         block.write(output_string)
         return TreeValue(block.block_id, 0)
 
     def load_value(self, memory_manager):
-        value_header_length = int(memory_manager.conf.get("BTREE_INDEX", "VALUE_HEADER_LENGTH"))
+        value_header_length = int(
+            memory_manager.conf.get("BTREE_INDEX", "VALUE_HEADER_LENGTH")
+        )
         block = memory_manager.block_dict[self.block_id]
         length = int(block.read(self.address, value_header_length))
         byte_string = block.read(self.address + value_header_length, length)
@@ -496,6 +522,7 @@ class TreeValue(object):
 
     def __str__(self):
         return "(block_id: {}, address: {})".format(self.block_id, self.address)
+
 
 class TreeListNode(ListNode):
     def __init__(self, current_btree_node, next_btree_node=None, prev=None, next=None):

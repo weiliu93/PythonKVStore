@@ -17,14 +17,44 @@ package_root_path = os.path.abspath(
 
 
 def test_basic_btree_set_and_get():
-    test_case_package_path = _get_test_case_package_path()
+    pool_folder, conf_path, block_file = _get_common_file_paths()
     _clean_up()
-    # TODO add btree index conf
+
+    index = BTreeIndex(
+        MemoryManager(
+            pool_folder=pool_folder, conf_path=conf_path, block_file=block_file
+        )
+    )
+    index.set(1, 10)
+    index.set(3, 100)
+    index.set(6, 8)
+
+    assert index.get(3) == 100
+    assert index.get(6) == 8
+    assert index.get(8) == None
+
+    index.set(3, 8)
+    assert index.get(3) == 8
+
+    assert list(index.key_value_pairs()) == [(1, 10), (3, 8), (6, 8)]
+
+    index.set(10, 100)
+
+    assert index.get(1) == 10
+    assert index.get(3) == 8
+    assert index.get(6) == 8
+    assert index.get(10) == 100
+    assert index.get(15) == None
+    assert index.get(14) == None
+
+    assert list(index.keys()) == [1, 3, 6, 10]
 
     _clean_up()
 
 
 def test_basic_btree_remove():
+    # TODO add more test cases
+
 
     pass
 
