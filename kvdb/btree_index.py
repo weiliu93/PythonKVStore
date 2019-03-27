@@ -52,7 +52,7 @@ class BTreeIndex(KVIndex):
             current_list_node.prev,
             [left_tree_list_node, key_node, right_tree_list_node],
         )
-        current.size += 1
+        current.refresh()
         # start to split when necessary
         while current.size == self._btree_rank:
             parent_tree_list_node = current.parent_tree_list_node
@@ -149,7 +149,7 @@ class BTreeIndex(KVIndex):
                         left_key_node.key, key_node.key = key_node.key, left_key_node.key
                         left_key_node.value, key_node.value = key_node.value, left_key_node.value
                         # add key_node and tree_list_node ahead
-                        current.add_key_ahead(left_key_node, tree_list_node)
+                        current.add_key_ahead(key_node, tree_list_node)
                         break
                 # try to steal key from right sibling
                 right_sibling = current.right_sibling_btree_node()
@@ -161,12 +161,45 @@ class BTreeIndex(KVIndex):
                         right_key_node.key, key_node.key = key_node.key, right_key_node.key
                         right_key_node.value, key_node.value = key_node.value, right_key_node.value
                         # append key_node and tree_list_node
-                        current.append_key(right_key_node, tree_list_node)
+                        current.append_key(key_node, tree_list_node)
                         break
-                # TODO then merge current key node with sibling node, replace key_node in parent_btree_node
-
-
-
+                # merge with left sibling
+                if left_sibling:
+                    left_key_node = current.parent_tree_list_node.prev
+                    parent_bree_node = current.parent_tree_list_node.current_btree_node
+                    left_key_node.prev.next = left_key_node.next.next
+                    if left_key_node.prev.next:
+                        left_key_node.prev.next.prev = left_key_node.prev
+                    left_sibling.merge(left_key_node, current)
+                    parent_bree_node.refresh()
+                    left_sibling.refresh()
+                    # if root is empty
+                    if parent_bree_node.size == 0:
+                        left_sibling.parent_tree_list_node = None
+                        self._root = left_sibling
+                        current = left_sibling
+                    # jump to parent node
+                    else:
+                        current = parent_bree_node
+                # merge with right sibling
+                elif right_sibling:
+                    right_key_node = current.parent_tree_list_node.next
+                    parent_bree_node = current.parent_tree_list_node.current_btree_node
+                    right_key_node.prev.next = right_key_node.next.next
+                    if right_key_node.prev.next:
+                        right_key_node.prev.next.prev = right_key_node.prev
+                    current.merge(right_key_node, right_sibling)
+                    parent_bree_node.refresh()
+                    current.refresh()
+                    # if root is empty
+                    if parent_bree_node.size == 0:
+                        current.parent_tree_list_node = None
+                        self._root = current
+                    # jump to parent node
+                    else:
+                        current = parent_bree_node
+                else:
+                    raise Exception("No siblings could be merged")
             return True
         else:
             return False
@@ -175,27 +208,26 @@ class BTreeIndex(KVIndex):
         return map(lambda pair: pair[0], self.key_value_pairs())
 
     def key_value_pairs(self):
-        stack, next_layer = [], []
-        current = self._root.list_head
-        while current:
-            next_layer.append(current.next)
-            current = current.next.next
-        next_layer.reverse()
-        stack.extend(next_layer)
+        stack = []
+        node = self._root.list_head.next
+        while node:
+            stack.append(node)
+            node = node.next
+        stack.reverse()
         while stack:
-            current = stack.pop()
-            if not current.next_btree_node:
-                # otherwise it is a dummy ListNode
-                if isinstance(current.prev, KeyListNode):
-                    yield current.prev.key, current.prev.value
+            next_layer = []
+            node = stack.pop()
+            if isinstance(node, TreeListNode):
+                node = node.next_btree_node
+                if node:
+                    node = node.list_head.next
+                    while node:
+                        next_layer.append(node)
+                        node = node.next
+                    next_layer.reverse()
+                    stack.extend(next_layer)
             else:
-                current = current.next_btree_node.list_head
-                next_layer = []
-                while current:
-                    next_layer.append(current.next)
-                    current = current.next.next
-                next_layer.reverse()
-                stack.extend(next_layer)
+                yield node.key, node.value.load_value(self._memory_manager)
 
     def clear(self):
         self._root = BTreeNode()
@@ -215,7 +247,7 @@ class BTreeIndex(KVIndex):
         right_list_head = ListNode(next=node.next)
         right_list_head.next.prev = right_list_head
         # remove key_node from linked list
-        node.prev.next = node.next.prev = None
+        node.prev.next = None
         # build left, right btrees
         left_btree_root = BTreeNode(left_list_head)
         right_btree_root = BTreeNode(right_list_head)
@@ -399,6 +431,30 @@ class BTreeNode(object):
         key_node.next.prev = key_node
         self.refresh()
 
+    def merge(self, key_node, another_bree_node):
+        last_node = self.last_tree_node()
+        # append key_node first
+        last_node.next = key_node
+        key_node.prev = last_node
+        last_node = key_node
+        # append all remaining nodes
+        node = another_bree_node.list_head.next
+        while node:
+            last_node.next = node
+            node.prev = last_node
+            last_node = node
+            node = node.next
+        last_node.next = None
+        self.refresh()
+
+    def __str__(self):
+        output_list = []
+        node = self.list_head.next
+        while node:
+            output_list.append(str(node))
+            node = node.next
+        return "(" + ", ".join(output_list) + ")"
+
 class ListNode(object):
     """Doubly Linked List Node"""
 
@@ -412,6 +468,9 @@ class KeyListNode(ListNode):
         super().__init__(prev, next)
         self.key = key
         self.value = value
+
+    def __str__(self):
+        return "(key: {}, value: {})".format(self.key, self.value)
 
 class TreeValue(object):
     def __init__(self, block_id, address):
