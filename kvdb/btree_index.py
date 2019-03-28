@@ -1,5 +1,4 @@
 from kv_index import KVIndex
-from memory_manager import MemoryManager
 
 import pickle
 

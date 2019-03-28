@@ -53,30 +53,128 @@ def test_basic_btree_set_and_get():
 
 
 def test_basic_btree_remove():
-    # TODO add more test cases
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
+    index = BTreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+    values = [value for value in range(1, 11, 1)]
+    for value in values:
+        index.set(value, value)
+    random.shuffle(values)
+    for value in values:
+        index.remove(value)
+        values.remove(value)
+        assert list(index.keys()) == sorted(list(values))
 
-    pass
+    _clean_up()
 
 
 def test_btree_clear():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
-    pass
+    index = BTreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+    values = [value for value in range(1, 11, 1)]
+    for value in values:
+        index.set(value, value)
+    assert len(list(index.keys())) == 10
+
+    index.clear()
+    assert list(index.keys()) == []
+
+    index.set(1, 10)
+    index.set(2, 100)
+
+    assert len(list(index.keys())) == 2
+
+    index.clear()
+    assert list(index.keys()) == []
+
+    _clean_up()
 
 
 def test_btree_keys():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
-    pass
+    index = BTreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+    values, vis = [], set()
+    for _ in range(100):
+        value = random.randint(1, 10000)
+        while value in vis:
+            value = random.randint(1, 10000)
+        vis.add(value)
+        values.append(value)
+    for ind, value in enumerate(values):
+        index.set(value, value)
+        assert list(index.keys()) == sorted(list(values[ : ind + 1]))
+
+    _clean_up()
 
 
 def test_btree_key_value_pairs():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
-    pass
+    index = BTreeIndex(MemoryManager(pool_folder=pool_folder, conf_path=conf_path, block_file=block_file))
+    values, vis = [], set()
+    for _ in range(100):
+        value = random.randint(1, 10000)
+        while value in vis:
+            value = random.randint(1, 10000)
+        vis.add(value)
+        values.append(value)
+    for ind, value in enumerate(values):
+        index.set(value, value)
+        assert list(index.key_value_pairs()) == sorted(list(map(lambda value: (value, value), values[: ind + 1])))
+
+    _clean_up()
 
 
 def test_btree_real_scenario():
+    pool_folder, conf_path, block_file = _get_common_file_paths()
+    _clean_up()
 
-    pass
+    comp_dict = {}
+    index = BTreeIndex(MemoryManager(pool_folder = pool_folder, conf_path = conf_path, block_file = block_file))
+    ops = ["set", "get" , "remove", "clear"]
+    for _ in range(20000):
+        op_index = random.randint(1, 10)
+        # weight: [4, 3, 2, 1]
+        if op_index <= 4:
+            op_index = 0
+        elif op_index <= 7:
+            op_index = 1
+        elif op_index <= 9:
+            op_index = 2
+        else:
+            op_index = 3
+        op = ops[op_index]
+        if op == "set":
+            key, value = random.randint(1, 100), random.randint(1, 100)
+            index.set(key, value)
+            comp_dict[key] = value
+        elif op == "get":
+            key = random.randint(1, 100)
+            if key not in comp_dict:
+                assert index.get(key) == None
+            else:
+                assert comp_dict[key] == index.get(key)
+        elif op == "remove":
+            key = random.randint(1, 100)
+            if key in comp_dict:
+                comp_dict.pop(key)
+                assert index.remove(key) == True
+            else:
+                assert index.remove(key) == False
+        elif op == "clear":
+            comp_dict.clear()
+            index.clear()
+
+        key_value_pairs = sorted([(key, value) for key, value in comp_dict.items()])
+        assert key_value_pairs == list(index.key_value_pairs())
+
+    _clean_up()
 
 
 def _get_test_case_package_path():
